@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TossPayments App Redirect Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e1e1;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #4f7cff;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px 0;
+        }
+
+        .btn-primary {
+            background: #4f7cff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #3d63cc;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e1e1e1;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+        }
+
+        .device-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .url-display {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            margin: 10px 0;
+            text-align: left;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e1e1e1;
+            font-size: 12px;
+            color: #666;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+            }
+            
+            h1 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">📱</div>
+        <h1>TossPayments App Demo</h1>
+        <p class="subtitle">Simple App-to-App redirect demo</p>
+
+        <div class="form-group">
+            <label for="customerKey">Customer Key:</label>
+            <input type="text" id="customerKey" placeholder="user_123" value="user_123">
+        </div>
+
+        <button class="btn btn-primary" onclick="openTossApp()">
+            🚀 Open TossPayments App
+        </button>
+
+        <button class="btn btn-secondary" onclick="toggleDebug()">
+            🔍 Toggle Debug Info
+        </button>
+
+        <div id="statusMessage" class="status hidden"></div>
+
+        <div id="debugInfo" class="device-info hidden">
+            <strong>🔧 Debug Info:</strong><br>
+            <span id="deviceType"></span><br>
+            <span id="userAgent"></span><br>
+            <strong>Generated URL:</strong>
+            <div id="generatedUrl" class="url-display"></div>
+        </div>
+
+        <div class="footer">
+            <strong>How it works:</strong><br>
+            1. Enter customer key<br>
+            2. Click "Open TossPayments App"<br>
+            3. App opens with URL scheme<br>
+            4. If no app → redirect to store
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let debugMode = false;
+
+        // Device detection
+        function detectDevice() {
+            const userAgent = navigator.userAgent;
+            const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+            const isAndroid = /Android/i.test(userAgent);
+            const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
+
+            return {
+                isMobile,
+                isAndroid,
+                isIOS,
+                userAgent
+            };
+        }
+
+        // Show status message
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+            statusEl.classList.remove('hidden');
+
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                statusEl.classList.add('hidden');
+            }, 5000);
+        }
+
+        // Generate TossPayments URL
+        function generateTossUrl(customerKey) {
+            const baseUrl = window.location.origin + window.location.pathname;
+            
+            const params = {
+                customerKey: customerKey,
+                successUrl: baseUrl + '?status=success&customerKey=' + encodeURIComponent(customerKey),
+                failUrl: baseUrl + '?status=fail&customerKey=' + encodeURIComponent(customerKey),
+                orderId: 'billing_' + Date.now(),
+                timestamp: Date.now()
+            };
+
+            // Build URL with parameters
+            const paramString = Object.keys(params)
+                .map(key => `${key}=${encodeURIComponent(params[key])}`)
+                .join('&');
+
+            return `supertoss://billingauth?${paramString}`;
+        }
+
+        // Open TossPayments App
+        function openTossApp() {
+            const customerKey = document.getElementById('customerKey').value.trim();
+            
+            if (!customerKey) {
+                showStatus('Please enter Customer Key!', 'error');
+                return;
+            }
+
+            const device = detectDevice();
+            const tossUrl = generateTossUrl(customerKey);
+
+            // Update debug info
+            if (debugMode) {
+                document.getElementById('generatedUrl').textContent = tossUrl;
+            }
+
+            if (!device.isMobile) {
+                showStatus('⚠️ App redirect works best on mobile devices. Opening anyway...', 'info');
+                
+                // Still try to open, might work on some desktop browsers
+                setTimeout(() => {
+                    window.location.href = tossUrl;
+                    
+                    // Fallback for desktop
+                    setTimeout(() => {
+                        showStatus('💻 Desktop detected. In production, show QR code or redirect to web version.', 'info');
+                    }, 2000);
+                }, 1000);
+                
+                return;
+            }
+
+            showStatus('📱 Opening TossPayments app...', 'info');
+
+            // Try to open app
+            const startTime = Date.now();
+            
+            // Create invisible iframe to avoid page navigation issues
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = tossUrl;
+            document.body.appendChild(iframe);
+
+            // Alternative: direct navigation (comment out iframe method above if using this)
+            // window.location.href = tossUrl;
+
+            // Fallback to app store if app doesn't open
+            const fallbackTimer = setTimeout(() => {
+                const elapsed = Date.now() - startTime;
+                
+                if (elapsed > 2000) { // If still on page after 2 seconds
+                    let storeUrl = '';
+                    
+                    if (device.isAndroid) {
+                        storeUrl = 'https://play.google.com/store/apps/details?id=viva.republica.toss';
+                        showStatus('📲 TossPayments app not found. Redirecting to Play Store...', 'info');
+                    } else if (device.isIOS) {
+                        storeUrl = 'https://apps.apple.com/kr/app/toss/id839333328';
+                        showStatus('📲 TossPayments app not found. Redirecting to App Store...', 'info');
+                    } else {
+                        showStatus('❌ TossPayments app not found and device not recognized.', 'error');
+                        return;
+                    }
+                    
+                    setTimeout(() => {
+                        window.location.href = storeUrl;
+                    }, 2000);
+                }
+            }, 2500);
+
+            // Clear fallback if user returns to page quickly (app opened successfully)
+            const clearFallback = () => {
+                clearTimeout(fallbackTimer);
+                document.removeEventListener('visibilitychange', clearFallback);
+            };
+            
+            document.addEventListener('visibilitychange', clearFallback);
+
+            // Clean up iframe
+            setTimeout(() => {
+                if (iframe && iframe.parentNode) {
+                    iframe.parentNode.removeChild(iframe);
+                }
+            }, 5000);
+        }
+
+        // Toggle debug information
+        function toggleDebug() {
+            debugMode = !debugMode;
+            const debugEl = document.getElementById('debugInfo');
+            
+            if (debugMode) {
+                debugEl.classList.remove('hidden');
+                updateDebugInfo();
+            } else {
+                debugEl.classList.add('hidden');
+            }
+        }
+
+        // Update debug information
+        function updateDebugInfo() {
+            const device = detectDevice();
+            
+            document.getElementById('deviceType').textContent = 
+                `Device: ${device.isMobile ? 'Mobile' : 'Desktop'} | ` +
+                `Android: ${device.isAndroid} | iOS: ${device.isIOS}`;
+                
+            document.getElementById('userAgent').textContent = 
+                `User Agent: ${device.userAgent.substring(0, 60)}...`;
+
+            const customerKey = document.getElementById('customerKey').value.trim() || 'user_123';
+            const tossUrl = generateTossUrl(customerKey);
+            document.getElementById('generatedUrl').textContent = tossUrl;
+        }
+
+        // Handle URL parameters (return from TossPayments)
+        function handleUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const status = urlParams.get('status');
+            const customerKey = urlParams.get('customerKey');
+
+            if (status === 'success') {
+                showStatus(`✅ Payment method added successfully for ${customerKey}!`, 'success');
+                
+                // Update form
+                if (customerKey) {
+                    document.getElementById('customerKey').value = customerKey;
+                }
+                
+            } else if (status === 'fail') {
+                const errorCode = urlParams.get('code') || 'UNKNOWN';
+                const errorMessage = urlParams.get('message') || 'Unknown error';
+                
+                showStatus(`❌ Failed to add payment method: ${errorMessage} (${errorCode})`, 'error');
+                
+                if (customerKey) {
+                    document.getElementById('customerKey').value = customerKey;
+                }
+            }
+
+            // Clean URL after handling
+            if (status) {
+                const cleanUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, cleanUrl);
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 TossPayments App Redirect Demo loaded');
+            handleUrlParams();
+            
+            // Focus on input
+            document.getElementById('customerKey').focus();
+            
+            // Enter key support
+            document.getElementById('customerKey').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    openTossApp();
+                }
+            });
+        });
+
+        // Add some visual feedback
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                console.log('👀 User returned to page');
+                // User came back to the page - could mean app didn't open or they're back from app
+            }
+        });
+    </script>
+</body>
+</html>
